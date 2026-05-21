@@ -97,6 +97,7 @@ canvas.wave-overlay {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.45);
+  padding-bottom: env(safe-area-inset-bottom);
   height: calc(280px + env(safe-area-inset-bottom));
   transition: height 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
@@ -133,8 +134,8 @@ canvas.wave-overlay {
 
 .event-list {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding-bottom: env(safe-area-inset-bottom);
   -webkit-overflow-scrolling: touch;
 }
 

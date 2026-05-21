@@ -28,7 +28,27 @@ export default function App() {
 
   const current = createMemo<QuakeEvent | null>(() => quakes()[0] ?? null);
 
+  const clearNotificationsAndBadge = async () => {
+    if (!("serviceWorker" in navigator)) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const notifs = await reg.getNotifications();
+      notifs.forEach((n) => n.close());
+    } catch {
+      // ignore
+    }
+    const nav = navigator as Navigator & { clearAppBadge?: () => Promise<void> };
+    nav.clearAppBadge?.().catch(() => {});
+  };
+
   onMount(async () => {
+    void clearNotificationsAndBadge();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        void clearNotificationsAndBadge();
+      }
+    });
+
     const recent = await fetchRecentQuakes(10);
     const params = new URLSearchParams(location.search);
     const eid = params.get("eid");

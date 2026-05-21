@@ -58,7 +58,7 @@ async function handlePush(event: PushEvent): Promise<void> {
 
   await self.registration.showNotification(title, {
     body,
-    tag: data?.id ?? "quake",
+    tag: "q-awake-latest",
     data: data ? { eid: data.id } : undefined,
     badge: "/icon-192.png",
     icon: "/icon-192.png",
