@@ -6,7 +6,6 @@ import type { QuakeEvent } from "../lib/p2pquake";
 const P_WAVE_KMS = 7;
 const S_WAVE_KMS = 4;
 const ANIM_DURATION_MS = 60_000;
-const FRESHNESS_MS = 2 * 60 * 1000;
 
 function parseJstTime(s: string | undefined): number {
   if (!s) return NaN;
@@ -73,16 +72,16 @@ export default function EarthquakeMap(props: Props) {
 
     const epochMs = parseJstTime(ev.earthquake?.time);
     const ageMs = Number.isFinite(epochMs) ? Date.now() - epochMs : Infinity;
-    const isFresh = ageMs < FRESHNESS_MS;
 
-    if (!isFresh) {
+    if (ageMs >= ANIM_DURATION_MS) {
       animating = false;
       drawFrame();
       return;
     }
 
+    // Anchor animStart so the loop's elapsed reflects real wall-clock age.
+    animStart = performance.now() - Math.max(0, ageMs);
     animating = true;
-    animStart = performance.now();
     const loop = () => {
       drawFrame();
       if (animating && performance.now() - animStart < ANIM_DURATION_MS) {
