@@ -21,7 +21,7 @@ export interface QuakeEvent {
 }
 
 const WS_URL = "wss://api.p2pquake.net/v2/ws";
-const HISTORY_URL = "https://api.p2pquake.net/v2/history?codes=551&limit=1";
+const HISTORY_BASE = "https://api.p2pquake.net/v2/history?codes=551&limit=";
 
 export function connectQuakeStream(onEvent: (ev: QuakeEvent) => void): () => void {
   let ws: WebSocket | null = null;
@@ -57,13 +57,12 @@ export function connectQuakeStream(onEvent: (ev: QuakeEvent) => void): () => voi
   };
 }
 
-export async function fetchLatestQuake(): Promise<QuakeEvent | null> {
+export async function fetchRecentQuakes(limit = 10): Promise<QuakeEvent[]> {
   try {
-    const res = await fetch(HISTORY_URL);
-    if (!res.ok) return null;
-    const arr = (await res.json()) as QuakeEvent[];
-    return arr[0] ?? null;
+    const res = await fetch(`${HISTORY_BASE}${limit}`);
+    if (!res.ok) return [];
+    return (await res.json()) as QuakeEvent[];
   } catch {
-    return null;
+    return [];
   }
 }

@@ -119,10 +119,10 @@ export default function EarthquakeMap(props: Props) {
   }
 
   return (
-    <>
+    <div class="map-container">
       <div id="map" ref={mapEl}></div>
       <canvas class="wave-overlay" ref={canvasEl}></canvas>
-    </>
+    </div>
   );
 }
 

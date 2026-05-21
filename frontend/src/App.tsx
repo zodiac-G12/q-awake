@@ -1,15 +1,11 @@
-import { createSignal, onMount, Show } from "solid-js";
+import { createMemo, createSignal, For, onMount, Show } from "solid-js";
 import EarthquakeMap from "./components/EarthquakeMap";
 import {
   connectQuakeStream,
-  fetchLatestQuake,
+  fetchRecentQuakes,
   QuakeEvent,
 } from "./lib/p2pquake";
-import {
-  subscribeToPush,
-  unsubscribeFromPush,
-  getPushStatus,
-} from "./lib/push";
+import { subscribeToPush, getPushStatus } from "./lib/push";
 
 const SCALE_LABEL: Record<number, string> = {
   10: "1",
@@ -24,30 +20,34 @@ const SCALE_LABEL: Record<number, string> = {
 };
 
 export default function App() {
-  const [event, setEvent] = createSignal<QuakeEvent | null>(null);
+  const [quakes, setQuakes] = createSignal<QuakeEvent[]>([]);
   const [pushStatus, setPushStatus] =
     createSignal<"unsupported" | "subscribed" | "default" | "loading">("loading");
   const [toast, setToast] = createSignal<string>("");
 
+  const current = createMemo<QuakeEvent | null>(() => quakes()[0] ?? null);
+
   onMount(async () => {
-    const latest = await fetchLatestQuake();
-    if (latest) setEvent(latest);
+    const recent = await fetchRecentQuakes(10);
+    const params = new URLSearchParams(location.search);
+    const eid = params.get("eid");
+    let list = recent;
+    if (eid) {
+      const idx = list.findIndex((q) => q.id === eid);
+      if (idx > 0) {
+        const picked = list[idx];
+        list = [picked, ...list.filter((_, i) => i !== idx)];
+      }
+    }
+    setQuakes(list);
+
     const off = connectQuakeStream((ev) => {
-      setEvent(ev);
+      setQuakes((prev) => [ev, ...prev.filter((q) => q.id !== ev.id)].slice(0, 10));
       setToast(`受信: ${ev.earthquake.hypocenter.name}`);
       setTimeout(() => setToast(""), 4000);
     });
+
     setPushStatus(await getPushStatus());
-
-    // Deep-link: if SW notification click passed an event id, fetch & focus it
-    const params = new URLSearchParams(location.search);
-    const eid = params.get("eid");
-    if (eid) {
-      // Try the most recent — if it matches, we use it; otherwise no-op.
-      const latestAgain = await fetchLatestQuake();
-      if (latestAgain && latestAgain.id === eid) setEvent(latestAgain);
-    }
-
     window.addEventListener("beforeunload", off);
   });
 
@@ -65,60 +65,53 @@ export default function App() {
     }
   };
 
-  const onUnsubscribe = async () => {
-    setPushStatus("loading");
-    await unsubscribeFromPush();
-    setPushStatus("default");
-    setToast("Push通知を停止しました");
-    setTimeout(() => setToast(""), 4000);
-  };
-
   return (
     <>
       <header>
         <h1>Q-AWAKE 地震速報</h1>
         <Show
           when={pushStatus() !== "unsupported"}
-          fallback={<span style={{ "font-size": "12px", color: "#8a93a8" }}>非対応ブラウザ</span>}
+          fallback={<span class="hint">非対応ブラウザ</span>}
         >
-          <Show
-            when={pushStatus() === "subscribed"}
-            fallback={
-              <button
-                class="subscribe-btn"
-                disabled={pushStatus() === "loading"}
-                onClick={onSubscribe}
-              >
-                {pushStatus() === "loading" ? "..." : "通知を有効化"}
-              </button>
-            }
-          >
-            <button class="subscribe-btn" onClick={onUnsubscribe}>
-              通知を停止
+          <Show when={pushStatus() !== "subscribed"}>
+            <button
+              class="subscribe-btn"
+              disabled={pushStatus() === "loading"}
+              onClick={onSubscribe}
+            >
+              {pushStatus() === "loading" ? "..." : "通知を有効化"}
             </button>
           </Show>
         </Show>
       </header>
       <main>
-        <EarthquakeMap event={event} />
+        <EarthquakeMap event={current} />
         <Show when={toast()}>
           <div class="toast">{toast()}</div>
         </Show>
-        <Show when={event()}>
-          <div class="event-card">
-            <div class="place">
-              <span class="scale-badge">
-                震度 {SCALE_LABEL[event()!.earthquake.maxScale] ?? "?"}
-              </span>{" "}
-              {event()!.earthquake.hypocenter.name}
-            </div>
-            <div class="meta">
-              <span>M {event()!.earthquake.hypocenter.magnitude.toFixed(1)}</span>
-              <span>深さ {event()!.earthquake.hypocenter.depth} km</span>
-              <span>{event()!.earthquake.time}</span>
-            </div>
-          </div>
-        </Show>
+        <div class="event-list" role="list">
+          <Show
+            when={quakes().length > 0}
+            fallback={<div class="empty">最新情報を取得中…</div>}
+          >
+            <For each={quakes()}>
+              {(q, idx) => (
+                <div class={`event-row ${idx() === 0 ? "is-latest" : ""}`} role="listitem">
+                  <span class="scale-badge">
+                    {SCALE_LABEL[q.earthquake.maxScale] ?? "?"}
+                  </span>
+                  <div class="event-info">
+                    <div class="place">{q.earthquake.hypocenter.name}</div>
+                    <div class="sub">
+                      M{q.earthquake.hypocenter.magnitude.toFixed(1)} ・ 深さ
+                      {q.earthquake.hypocenter.depth}km ・ {q.earthquake.time}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </For>
+          </Show>
+        </div>
       </main>
     </>
   );
