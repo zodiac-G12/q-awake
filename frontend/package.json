@@ -19,6 +19,7 @@
     "vite-plugin-pwa": "^0.20.0",
     "vite-plugin-solid": "^2.10.2",
     "workbox-precaching": "^7.4.1",
-    "workbox-window": "^7.1.0"
+    "workbox-window": "^7.1.0",
+    "wrangler": "^4.93.0"
   }
 }
