@@ -5,7 +5,16 @@ import {
   fetchRecentQuakes,
   QuakeEvent,
 } from "./lib/p2pquake";
-import { subscribeToPush, getPushStatus } from "./lib/push";
+import { subscribeToPush } from "./lib/push";
+
+type NotifStatus = "unsupported" | "default" | "granted" | "denied" | "loading";
+
+function readNotifStatus(): NotifStatus {
+  if (typeof Notification === "undefined" || !("serviceWorker" in navigator)) {
+    return "unsupported";
+  }
+  return Notification.permission as NotifStatus;
+}
 
 const SCALE_LABEL: Record<number, string> = {
   10: "1",
@@ -21,8 +30,7 @@ const SCALE_LABEL: Record<number, string> = {
 
 export default function App() {
   const [quakes, setQuakes] = createSignal<QuakeEvent[]>([]);
-  const [pushStatus, setPushStatus] =
-    createSignal<"unsupported" | "subscribed" | "default" | "loading">("loading");
+  const [notifStatus, setNotifStatus] = createSignal<NotifStatus>(readNotifStatus());
   const [toast, setToast] = createSignal<string>("");
   const [listOpen, setListOpen] = createSignal(true);
 
@@ -68,20 +76,18 @@ export default function App() {
       setTimeout(() => setToast(""), 4000);
     });
 
-    setPushStatus(await getPushStatus());
     window.addEventListener("beforeunload", off);
   });
 
   const onSubscribe = async () => {
+    setNotifStatus("loading");
     try {
-      setPushStatus("loading");
       await subscribeToPush();
-      setPushStatus("subscribed");
       setToast("Push通知を有効にしました");
     } catch (e) {
-      setPushStatus(await getPushStatus());
       setToast(e instanceof Error ? e.message : "失敗しました");
     } finally {
+      setNotifStatus(readNotifStatus());
       setTimeout(() => setToast(""), 4000);
     }
   };
@@ -91,16 +97,18 @@ export default function App() {
       <header>
         <h1>Q-AWAKE 地震速報</h1>
         <Show
-          when={pushStatus() !== "unsupported"}
+          when={notifStatus() !== "unsupported"}
           fallback={<span class="hint">非対応ブラウザ</span>}
         >
-          <Show when={pushStatus() !== "subscribed"}>
+          <Show
+            when={notifStatus() === "default" || notifStatus() === "loading"}
+          >
             <button
               class="subscribe-btn"
-              disabled={pushStatus() === "loading"}
+              disabled={notifStatus() === "loading"}
               onClick={onSubscribe}
             >
-              {pushStatus() === "loading" ? "..." : "通知を有効化"}
+              {notifStatus() === "loading" ? "..." : "通知を有効化"}
             </button>
           </Show>
         </Show>
