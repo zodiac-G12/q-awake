@@ -6,6 +6,14 @@ import type { QuakeEvent } from "../lib/p2pquake";
 const P_WAVE_KMS = 7;
 const S_WAVE_KMS = 4;
 const ANIM_DURATION_MS = 60_000;
+const FRESHNESS_MS = 2 * 60 * 1000;
+
+function parseJstTime(s: string | undefined): number {
+  if (!s) return NaN;
+  const m = s.match(/^(\d{4})\/(\d{2})\/(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
+  if (!m) return NaN;
+  return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4] - 9, +m[5], +m[6]);
+}
 
 const MAP_STYLE =
   "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
@@ -20,6 +28,7 @@ export default function EarthquakeMap(props: Props) {
   let map: MLMap | null = null;
   let raf = 0;
   let animStart = 0;
+  let animating = false;
   let activeEvent: QuakeEvent | null = null;
 
   onMount(() => {
@@ -58,14 +67,29 @@ export default function EarthquakeMap(props: Props) {
     const ev = props.event();
     if (!ev || !map) return;
     activeEvent = ev;
-    animStart = performance.now();
     const { latitude, longitude } = ev.earthquake.hypocenter;
     map.flyTo({ center: [longitude, latitude], zoom: 6.2, speed: 1.2 });
     cancelAnimationFrame(raf);
+
+    const epochMs = parseJstTime(ev.earthquake?.time);
+    const ageMs = Number.isFinite(epochMs) ? Date.now() - epochMs : Infinity;
+    const isFresh = ageMs < FRESHNESS_MS;
+
+    if (!isFresh) {
+      animating = false;
+      drawFrame();
+      return;
+    }
+
+    animating = true;
+    animStart = performance.now();
     const loop = () => {
       drawFrame();
-      if (performance.now() - animStart < ANIM_DURATION_MS) {
+      if (animating && performance.now() - animStart < ANIM_DURATION_MS) {
         raf = requestAnimationFrame(loop);
+      } else {
+        animating = false;
+        drawFrame();
       }
     };
     raf = requestAnimationFrame(loop);
@@ -80,17 +104,18 @@ export default function EarthquakeMap(props: Props) {
 
     if (!activeEvent) return;
     const { latitude, longitude } = activeEvent.earthquake.hypocenter;
-    const elapsed = (performance.now() - animStart) / 1000;
-    if (elapsed < 0) return;
-
     const center = map.project([longitude, latitude]);
-    const pxPerKm = pixelsPerKmAt(map, latitude);
 
-    const pRadius = P_WAVE_KMS * elapsed * pxPerKm;
-    const sRadius = S_WAVE_KMS * elapsed * pxPerKm;
-
-    drawWave(ctx, center.x, center.y, pRadius, "rgba(120, 200, 255, ", elapsed, 60);
-    drawWave(ctx, center.x, center.y, sRadius, "rgba(255, 90, 90, ", elapsed, 60);
+    if (animating) {
+      const elapsed = (performance.now() - animStart) / 1000;
+      if (elapsed >= 0) {
+        const pxPerKm = pixelsPerKmAt(map, latitude);
+        const pRadius = P_WAVE_KMS * elapsed * pxPerKm;
+        const sRadius = S_WAVE_KMS * elapsed * pxPerKm;
+        drawWave(ctx, center.x, center.y, pRadius, "rgba(120, 200, 255, ", elapsed, 60);
+        drawWave(ctx, center.x, center.y, sRadius, "rgba(255, 90, 90, ", elapsed, 60);
+      }
+    }
     drawEpicenter(ctx, center.x, center.y, activeEvent.earthquake.hypocenter.magnitude);
   }
 
