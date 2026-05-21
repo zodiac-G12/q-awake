@@ -24,6 +24,7 @@ export default function App() {
   const [pushStatus, setPushStatus] =
     createSignal<"unsupported" | "subscribed" | "default" | "loading">("loading");
   const [toast, setToast] = createSignal<string>("");
+  const [listOpen, setListOpen] = createSignal(true);
 
   const current = createMemo<QuakeEvent | null>(() => quakes()[0] ?? null);
 
@@ -89,28 +90,44 @@ export default function App() {
         <Show when={toast()}>
           <div class="toast">{toast()}</div>
         </Show>
-        <div class="event-list" role="list">
-          <Show
-            when={quakes().length > 0}
-            fallback={<div class="empty">最新情報を取得中…</div>}
+        <div class={`event-sheet ${listOpen() ? "open" : "closed"}`}>
+          <button
+            class="sheet-handle"
+            onClick={() => setListOpen(!listOpen())}
+            aria-label={listOpen() ? "リストを閉じる" : "リストを開く"}
+            aria-expanded={listOpen()}
           >
-            <For each={quakes()}>
-              {(q, idx) => (
-                <div class={`event-row ${idx() === 0 ? "is-latest" : ""}`} role="listitem">
-                  <span class="scale-badge">
-                    {SCALE_LABEL[q.earthquake.maxScale] ?? "?"}
-                  </span>
-                  <div class="event-info">
-                    <div class="place">{q.earthquake.hypocenter.name}</div>
-                    <div class="sub">
-                      M{q.earthquake.hypocenter.magnitude.toFixed(1)} ・ 深さ
-                      {q.earthquake.hypocenter.depth}km ・ {q.earthquake.time}
+            <span class="handle-bar" />
+            <span class="handle-caption">
+              {listOpen() ? "閉じる" : `直近 ${quakes().length} 件`}
+            </span>
+          </button>
+          <div class="event-list" role="list">
+            <Show
+              when={quakes().length > 0}
+              fallback={<div class="empty">最新情報を取得中…</div>}
+            >
+              <For each={quakes()}>
+                {(q, idx) => (
+                  <div
+                    class={`event-row ${idx() === 0 ? "is-latest" : ""}`}
+                    role="listitem"
+                  >
+                    <span class="scale-badge">
+                      {SCALE_LABEL[q.earthquake.maxScale] ?? "?"}
+                    </span>
+                    <div class="event-info">
+                      <div class="place">{q.earthquake.hypocenter.name}</div>
+                      <div class="sub">
+                        M{q.earthquake.hypocenter.magnitude.toFixed(1)} ・ 深さ
+                        {q.earthquake.hypocenter.depth}km ・ {q.earthquake.time}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </For>
-          </Show>
+                )}
+              </For>
+            </Show>
+          </div>
         </div>
       </main>
     </>

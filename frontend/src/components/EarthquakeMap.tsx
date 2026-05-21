@@ -48,15 +48,21 @@ export default function EarthquakeMap(props: Props) {
       canvasEl.style.height = `${h}px`;
       const ctx = canvasEl.getContext("2d");
       ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+      map?.resize();
+      drawFrame();
     };
     resize();
     window.addEventListener("resize", resize);
+
+    const ro = new ResizeObserver(resize);
+    ro.observe(mapEl);
 
     map.on("move", drawFrame);
     map.on("zoom", drawFrame);
 
     onCleanup(() => {
       window.removeEventListener("resize", resize);
+      ro.disconnect();
       cancelAnimationFrame(raf);
       map?.remove();
     });
