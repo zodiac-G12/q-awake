@@ -30,11 +30,20 @@ const SCALE_LABEL: Record<number, string> = {
 
 export default function App() {
   const [quakes, setQuakes] = createSignal<QuakeEvent[]>([]);
+  const [selectedId, setSelectedId] = createSignal<string | null>(null);
   const [notifStatus, setNotifStatus] = createSignal<NotifStatus>(readNotifStatus());
   const [toast, setToast] = createSignal<string>("");
   const [listOpen, setListOpen] = createSignal(true);
 
-  const current = createMemo<QuakeEvent | null>(() => quakes()[0] ?? null);
+  const current = createMemo<QuakeEvent | null>(() => {
+    const list = quakes();
+    const sel = selectedId();
+    if (sel) {
+      const found = list.find((q) => q.id === sel);
+      if (found) return found;
+    }
+    return list[0] ?? null;
+  });
 
   const clearNotificationsAndBadge = async () => {
     if (!("serviceWorker" in navigator)) return;
@@ -63,15 +72,13 @@ export default function App() {
     let list = recent;
     if (eid) {
       const idx = list.findIndex((q) => q.id === eid);
-      if (idx > 0) {
-        const picked = list[idx];
-        list = [picked, ...list.filter((_, i) => i !== idx)];
-      }
+      if (idx >= 0) setSelectedId(eid);
     }
     setQuakes(list);
 
     const off = connectQuakeStream((ev) => {
       setQuakes((prev) => [ev, ...prev.filter((q) => q.id !== ev.id)].slice(0, 10));
+      setSelectedId(null);
       setToast(`受信: ${ev.earthquake.hypocenter.name}`);
       setTimeout(() => setToast(""), 4000);
     });
@@ -136,10 +143,12 @@ export default function App() {
               fallback={<div class="empty">最新情報を取得中…</div>}
             >
               <For each={quakes()}>
-                {(q, idx) => (
-                  <div
-                    class={`event-row ${idx() === 0 ? "is-latest" : ""}`}
+                {(q) => (
+                  <button
+                    type="button"
+                    class={`event-row ${current()?.id === q.id ? "is-selected" : ""}`}
                     role="listitem"
+                    onClick={() => setSelectedId(q.id)}
                   >
                     <span class="scale-badge">
                       {SCALE_LABEL[q.earthquake.maxScale] ?? "?"}
@@ -151,7 +160,7 @@ export default function App() {
                         {q.earthquake.hypocenter.depth}km ・ {q.earthquake.time}
                       </div>
                     </div>
-                  </div>
+                  </button>
                 )}
               </For>
             </Show>

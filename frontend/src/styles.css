@@ -143,12 +143,26 @@ canvas.wave-overlay {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
   padding: 10px 14px;
+  border: none;
   border-bottom: 1px solid #161a2b;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.event-row.is-latest {
-  background: rgba(255, 107, 107, 0.08);
+.event-row:hover { background: rgba(255, 255, 255, 0.04); }
+.event-row:active { background: rgba(255, 255, 255, 0.06); }
+
+.event-row.is-selected {
+  background: rgba(255, 107, 107, 0.1);
+}
+.event-row.is-selected:hover {
+  background: rgba(255, 107, 107, 0.14);
 }
 
 .event-row .scale-badge {
