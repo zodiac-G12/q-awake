@@ -1,0 +1,12 @@
+{
+  "name": "q-awake",
+  "private": true,
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "dev:backend": "npm --workspace backend run dev",
+    "dev:frontend": "npm --workspace frontend run dev",
+    "build:frontend": "npm --workspace frontend run build",
+    "deploy:backend": "npm --workspace backend run deploy",
+    "vapid": "npx -y web-push generate-vapid-keys"
+  }
+}

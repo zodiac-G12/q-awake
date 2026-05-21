@@ -1,0 +1,19 @@
+name = "q-awake-backend"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+
+[triggers]
+crons = ["*/1 * * * *"]
+
+[[kv_namespaces]]
+binding = "KV"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"
+
+[vars]
+VAPID_SUBJECT = "mailto:you@example.com"
+MIN_SCALE = "30"
+ALLOWED_ORIGINS = "http://localhost:5173"
+
+# Set secrets via:
+#   wrangler secret put VAPID_PUBLIC_KEY
+#   wrangler secret put VAPID_PRIVATE_KEY
